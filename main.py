@@ -145,9 +145,15 @@ class StorageMonitor(QWidget):
         if End['perc'] <= TERMINAL:
             self.usage_label.setStyleSheet(f"color: hsv({180-(180*End['perc']/TERMINAL)}, {SATURATION}, 100%);")
             self.free_label.setStyleSheet(f"color: hsv({180-(180*End['perc']/TERMINAL)}, {SATURATION}, 100%);")
+            palette = self.palette()
+            palette.setColor(QPalette.ColorRole.Window, QColor(24,30,36))
+            self.setPalette(palette)
         else:
             self.usage_label.setStyleSheet(f"color: hsv({360-(90*(End['perc']-TERMINAL)/10)}, {SATURATION}, 100%);")
             self.free_label.setStyleSheet(f"color: hsv({360-(90*(End['perc']-TERMINAL)/10)}, {SATURATION}, 100%);")
+            palette = self.palette()
+            palette.setColor(QPalette.ColorRole.Window, QColor(48,24,24))
+            self.setPalette(palette)
         
         
         self.usage_label.setText(f"{convert_readable(End['used'], show_diff_sign=False)} / {convert_readable(End['total'], show_diff_sign=False)} [{End['perc']:.2f}%]")

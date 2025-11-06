@@ -32,35 +32,47 @@ app = QApplication([])
 class h1Text(QLabel):
     def __init__(self, text):
         super().__init__(text)
+
         font = self.font()
         font.setPointSize(20)
         font.setFamily(HEADER_FONT)
         font.setBold(True)
         font.setItalic(True)
         self.setFont(font)
+
+        self.setWordWrap(False)
+
         
 class h2Text(QLabel):
     def __init__(self, text):
         super().__init__(text)
+
         font = self.font()
         font.setPointSize(16)
         font.setFamily(HEADER_FONT)
         font.setBold(True) 
         self.setFont(font)
+
+        self.setWordWrap(False)
         
 class Text(QLabel):
     def __init__(self, text):
         super().__init__(text)
+
         font = self.font()
         font.setPointSize(12)
         font.setFamily(FONT)
         self.setFont(font)
+
+        self.setWordWrap(False)
+        
         
 class StorageMonitor(QWidget):
     def __init__(self, drive_letter):
         super().__init__()
         self.drive_letter = drive_letter
         layout = QVBoxLayout()
+        self.setMaximumHeight(200)
         
         palette = self.palette()
         palette.setColor(QPalette.ColorRole.Window, QColor(24,30,36))
@@ -70,8 +82,7 @@ class StorageMonitor(QWidget):
         self.setLayout(layout)
         layout.setSpacing(4)
         
-        
-        Header = h2Text(f"{self.drive_letter} \"{win32api.GetVolumeInformation(self.drive_letter + '\\')[0].upper()}\"")
+        Header = h2Text(f"C: \"NULL\"")
         Font = Header.font()
         Font.setItalic(True)
         Header.setFont(Font)
@@ -108,12 +119,21 @@ class StorageMonitor(QWidget):
         # layout.addWidget(self.write_label)
 
         self.update_usage()
+        self.update_drive()
         self.show()
         
-        self.timer = QTimer()
-        self.timer.setInterval(int(UNIT*1000))
-        self.timer.timeout.connect(self.update_usage)
-        self.timer.start()
+        self.usage_timer = QTimer()
+        self.usage_timer.setInterval(int(UNIT*1000))
+        self.usage_timer.timeout.connect(self.update_usage)
+        self.usage_timer.start()
+        
+        self.drive_timer = QTimer()
+        self.drive_timer.setInterval(5000)
+        self.drive_timer.timeout.connect(self.update_drive)
+        self.drive_timer.start()
+        
+    def update_drive(self):
+        self.header.setText(f"{self.drive_letter} \"{win32api.GetVolumeInformation(self.drive_letter + '\\')[0].upper()}\"") 
         
     def update_usage(self):
         try:
@@ -206,13 +226,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(PROGRAM_NAME)
         self.items = []
         self.grid = QGridLayout()
-        self.resize(1200, 0)
-        self.maximumHeight = 1440/1.5
+        self.setMaximumHeight(0) # Scale to the lowest possible height as possible
         
         layout = QVBoxLayout()
         HeaderLabel = h1Text(PROGRAM_NAME.upper())
+        HeaderLabel.setMaximumHeight(24)
         layout.addWidget(HeaderLabel)
-
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         palette = self.palette()
         palette.setColor(QPalette.ColorRole.Window, QColor(48,56,64))
@@ -248,8 +268,8 @@ class MainWindow(QMainWindow):
         
     def rebuild_grid(self):
         width = self.width()
-        self.resize(width, 0)
-        column_width = 400 
+        # self.resize(width, 0)
+        column_width = 350 
         cols = max(1, width // column_width)
 
         for i, widget in enumerate(self.items):

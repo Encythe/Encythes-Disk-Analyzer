@@ -8,7 +8,7 @@ PROGRAM_NAME = "Encythe's Disk Analyzer"
 # Configuration
 UNIT = 1 # How long to wait for between samples, in seconds
 HISTORY = 60  # Number of units to keep history for
-USE_DECIMAL = True
+USE_DECIMAL = False
 
 # Fonts
 HEADER_FONT = "Barlow"

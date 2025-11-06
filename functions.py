@@ -76,10 +76,13 @@ def magnitude_bytes(value):
 def convert_readable(size_in_bytes, show_diff_sign=True):
     sign_letter = ""
     if show_diff_sign:
-        if size_in_bytes > 0:
-            sign_letter = "+"
-        elif size_in_bytes < 0:
-            sign_letter = "-"
+        # sign_letter = '→ '
+        # if size_in_bytes > 0: sign_letter = "↗ "
+        # if size_in_bytes < 0: sign_letter = "↘ "
+        # if size_in_bytes > 1024**2: sign_letter = "↑ "
+        # if size_in_bytes < -1024**2: sign_letter = "↓ "
+        if size_in_bytes > 0: sign_letter = "+"
+        if size_in_bytes < 0: sign_letter = "-"
     
     size_in_bytes = abs(size_in_bytes)
     

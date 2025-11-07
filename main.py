@@ -133,7 +133,8 @@ class StorageMonitor(QWidget):
         self.drive_timer.start()
         
     def update_drive(self):
-        self.header.setText(f"{self.drive_letter} \"{win32api.GetVolumeInformation(self.drive_letter + '\\')[0].upper()}\"") 
+        try: self.header.setText(f"{self.drive_letter} \"{win32api.GetVolumeInformation(self.drive_letter + '\\')[0].upper()}\"") 
+        except BaseException: pass
         
     def update_usage(self):
         try:
@@ -183,32 +184,33 @@ class StorageMonitor(QWidget):
         RATE_OF_CHANGE = used_diff / len(LOCAL_HISTORY)
 
         
-        if self.last_updated < time.time() - 1:
-            new = get_drive_usage(self.drive_letter)
-            io = sample_drive_io(self.drive_letter)
-            
-            if len(self.delta_history) < 2:
-                while len(self.delta_history) < 2:
-                    self.delta_history.insert(0, new)
-            
-            self.delta_history.insert(0, new)
-            if len(self.delta_history) > 2:
-                self.delta_history.pop()
-            
-            self.last_updated = time.time()
-            self.delta = self.delta_history[0]['used'] - self.delta_history[1]['used']
+        # if self.last_updated < time.time() - UNIT*0.8:
+        # START INDENT
+        new = get_drive_usage(self.drive_letter)
+        io = sample_drive_io(self.drive_letter)
+        
+        if len(self.delta_history) < 2:
+            while len(self.delta_history) < 2:
+                self.delta_history.insert(0, new)
+        
+        self.delta_history.insert(0, new)
+        if len(self.delta_history) > 2:
+            self.delta_history.pop()
+        
+        self.delta = self.delta_history[0]['used'] - self.delta_history[1]['used']
 
-            self.io_label.setText(f"READ {convert_readable(io['read'], show_diff_sign=False)}/s | WRITE {convert_readable(io['write'], show_diff_sign=False)}/s")
+        self.io_label.setText(f"READ {convert_readable(io['read'], show_diff_sign=False)}/s | WRITE {convert_readable(io['write'], show_diff_sign=False)}/s")
 
-            difference = io['write']-io['read']
-            write_heavy = difference >= 0 and True or False
-            magnitude = magnitude_bytes(difference)
+        difference = io['write']-io['read']
+        write_heavy = difference >= 0 and True or False
+        magnitude = magnitude_bytes(difference)
 
-            if write_heavy:
-                self.io_label.setStyleSheet(f"color: rgb(255, {255-51*magnitude}, {255-51*magnitude});")
-            else:
-                self.io_label.setStyleSheet(f"color: rgb({255-51*magnitude}, {255-51*magnitude}, 255);")
-
+        if write_heavy:
+            self.io_label.setStyleSheet(f"color: rgb(255, {255-51*magnitude}, {255-51*magnitude});")
+        else:
+            self.io_label.setStyleSheet(f"color: rgb({255-51*magnitude}, {255-51*magnitude}, 255);")
+        self.last_updated = time.time()
+        # END INDENT
 
         self.activity_label.setText(f"{convert_readable(self.delta)} [{convert_readable(RATE_OF_CHANGE)}/s]")
         

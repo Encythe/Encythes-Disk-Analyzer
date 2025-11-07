@@ -27,14 +27,20 @@ class DriveIO:
         ))
         self.c_r = win32pdh.AddCounter(self.query, path_r)
         self.c_w = win32pdh.AddCounter(self.query, path_w)
+        try:
+            win32pdh.CollectQueryData(self.query)
+        except Exception:
+            pass
 
     def sample(self):
         try:
             win32pdh.CollectQueryData(self.query)
             r_val = win32pdh.GetFormattedCounterValue(self.c_r, win32pdh.PDH_FMT_LARGE)[1]
             w_val = win32pdh.GetFormattedCounterValue(self.c_w, win32pdh.PDH_FMT_LARGE)[1]
+            # print(f"[LOG] Sampled data for {self.drive}: R: {r_val} | W: {w_val}")
             return {"read": r_val, "write": w_val}
         except Exception as e:
+            # print(f"[ERROR] Failed to sample data for {self.drive}")
             return {"read": 0, "write": 0}
     
 SAMPLERS: dict[str, DriveIO] = {}    

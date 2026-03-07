@@ -1,102 +1,86 @@
-import math
-from constants import *
-import psutil, os, time
-import win32.win32pdh as win32pdh
+import math, psutil, sys
 
-print(DRIVES)
+# Optional: use decimal vs binary
+USE_DECIMAL = True
 
+# Global sampler dict (like your SAMPLERS)
+SAMPLERS = {}
+
+# -------------------
+# Cross-platform drive I/O sampler
 class DriveIO:
-    def __init__(self, drive_letter="C:"):
+    def __init__(self, drive_letter=None):
         self.drive = drive_letter
-        self.query = win32pdh.OpenQuery()
-        path_r = win32pdh.MakeCounterPath((
-            None,
-            PDH_OBJECT_LOGICALDISK,
-            self.drive,
-            None,
-            0,
-            PDH_COUNTER_DISK_READ_BYTES_PER_SEC
-        ))
-        path_w = win32pdh.MakeCounterPath((
-            None,
-            PDH_OBJECT_LOGICALDISK,
-            self.drive,
-            None,
-            0,
-            PDH_COUNTER_DISK_WRITE_BYTES_PER_SEC
-        ))
-        self.c_r = win32pdh.AddCounter(self.query, path_r)
-        self.c_w = win32pdh.AddCounter(self.query, path_w)
-        try:
-            win32pdh.CollectQueryData(self.query)
-        except Exception:
-            pass
+        # For Linux, we just store previous read/write values
+        self.prev_read = 0
+        self.prev_write = 0
+        self.prev_time = psutil.time.time()
+        # Get initial counters
+        counters = self._get_counters()
+        self.prev_read = counters["read"]
+        self.prev_write = counters["write"]
+
+    def _get_counters(self):
+        if sys.platform.startswith("win"):
+            # Windows: you could implement win32pdh code here if needed
+            return {"read": 0, "write": 0}
+        else:
+            # Linux: match disk by mountpoint
+            partitions = psutil.disk_partitions()
+            part = next((p for p in partitions if p.mountpoint == self.drive), None)
+            if not part:
+                return {"read": 0, "write": 0}
+            # e.g., '/dev/sda1' -> 'sda'
+            disk_name = part.device.split("/")[-1]
+            io_counters = psutil.disk_io_counters(perdisk=True)
+            if disk_name in io_counters:
+                io = io_counters[disk_name]
+                return {"read": io.read_bytes, "write": io.write_bytes}
+            else:
+                return {"read": 0, "write": 0}
 
     def sample(self):
-        try:
-            win32pdh.CollectQueryData(self.query)
-            r_val = win32pdh.GetFormattedCounterValue(self.c_r, win32pdh.PDH_FMT_LARGE)[1]
-            w_val = win32pdh.GetFormattedCounterValue(self.c_w, win32pdh.PDH_FMT_LARGE)[1]
-            # print(f"[LOG] Sampled data for {self.drive}: R: {r_val} | W: {w_val}")
-            return {"read": r_val, "write": w_val}
-        except Exception as e:
-            # print(f"[ERROR] Failed to sample data for {self.drive}")
-            return {"read": 0, "write": 0}
-    
-SAMPLERS: dict[str, DriveIO] = {}    
+        counters = self._get_counters()
+        return counters
 
-for drive in DRIVES:
-    SAMPLERS[drive] = DriveIO(drive_letter=drive)
-
+# -------------------
+# Convenience functions
 def sample_drive_io(drive_letter):
-    sampler = SAMPLERS.get(drive_letter)
-    if sampler:
-        return sampler.sample()
-    
-    return {"read": 0, "write": 0}
+    if drive_letter not in SAMPLERS:
+        SAMPLERS[drive_letter] = DriveIO(drive_letter)
+    return SAMPLERS[drive_letter].sample()
 
 def get_drive_usage(drive):
+    """Return total/used/free/percent for a mountpoint"""
     try:
         usage = psutil.disk_usage(drive)
-        if not SAMPLERS.get(drive, None):
-            SAMPLERS[drive] = DriveIO(drive_letter=drive)
     except FileNotFoundError:
         SAMPLERS.pop(drive, None)
         raise FileNotFoundError(f"Drive {drive} not found.")
-
     return {
         "total": usage.total,
         "used": usage.used,
         "free": usage.free,
         "perc": usage.percent,
-
         "original": usage
     }
-    
+
 def magnitude_bytes(value):
     value = abs(value)
-    if value <= 0:
-        return 0
+    if value <= 0: return 0
     return int(math.log10(value) / 3)
-    
-def convert_readable(size_in_bytes, show_diff_sign=True):
+
+def convert_readable(size_in_bytes, show_diff_sign=False):
     sign_letter = ""
     if show_diff_sign:
-        # sign_letter = '→ '
-        # if size_in_bytes > 0: sign_letter = "↗ "
-        # if size_in_bytes < 0: sign_letter = "↘ "
-        # if size_in_bytes > 1024**2: sign_letter = "↑ "
-        # if size_in_bytes < -1024**2: sign_letter = "↓ "
         if size_in_bytes > 0: sign_letter = "+"
         if size_in_bytes < 0: sign_letter = "-"
-    
     size_in_bytes = abs(size_in_bytes)
-    
+
     binary_size = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
     decimal_size = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-    size = USE_DECIMAL and 1000 or 1024
+    size = 1000 if USE_DECIMAL else 1024
 
-    for i, unit in enumerate(USE_DECIMAL and decimal_size or binary_size):
+    for i, unit in enumerate(decimal_size if USE_DECIMAL else binary_size):
         if size_in_bytes < size ** (i + 1):
             return f"{sign_letter}{size_in_bytes / (size ** i):.2f} {unit}"
-        

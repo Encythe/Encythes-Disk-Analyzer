@@ -68,7 +68,7 @@ def get_drive_usage(drive):
         "total": usage.total,
         "used": usage.used,
         "free": usage.free,
-        "perc": usage.percent,
+        "perc": usage.used/usage.total*100,
 
         "original": usage
     }

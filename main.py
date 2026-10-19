@@ -170,8 +170,8 @@ class StorageMonitor(QWidget):
             palette.setColor(QPalette.ColorRole.Window, QColor(24,30,36))
             self.setPalette(palette)
         else:
-            self.usage_label.setStyleSheet(f"color: hsv({360-(90*(End['perc']-TERMINAL)/10)}, {SATURATION}, 100%);")
-            self.free_label.setStyleSheet(f"color: hsv({360-(90*(End['perc']-TERMINAL)/10)}, {SATURATION}, 100%);")
+            self.usage_label.setStyleSheet(f"color: hsv({360-(90*(End['perc']-TERMINAL)/(100-TERMINAL))}, {SATURATION}, 100%);")
+            self.free_label.setStyleSheet(f"color: hsv({360-(90*(End['perc']-TERMINAL)/(100-TERMINAL))}, {SATURATION}, 100%);")
             palette = self.palette()
             palette.setColor(QPalette.ColorRole.Window, QColor(48,24,24))
             self.setPalette(palette)
